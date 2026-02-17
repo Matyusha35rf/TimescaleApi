@@ -8,16 +8,28 @@ namespace BusinessLogic.Services
         IValueRecordRepository valueRecordRepository,
         IResultRepository resultRepository) : IFileProcessingService  // реализуем интерфейс
     {
-        public async Task<UploadCsvResponse> ProcessCsvFileAsync(IFormFile file)  // точно как в интерфейсе
+        public async Task<UploadCsvResponse> ProcessCsvFileAsync(IFormFile file)
         {
-            // TODO: добавить логику
-            
-            return new UploadCsvResponse
+            var response = new UploadCsvResponse
             {
-                Success = true,
                 FileName = file.FileName,
-                Message = "Файл успешно обработан"
+                Success = true,
+                Message = "Файл успешно обработан",
+                RowsSaved = 0 // пока 0, позже заполнится
             };
+
+            try
+            {
+                // логика обработки
+                return response;
+            }
+            catch (Exception ex)
+            {
+                response.Success = false;
+                response.Message = "Ошибка обработки";
+                response.Errors.Add(ex.Message);
+                return response;
+            }
         }
     }
 }
