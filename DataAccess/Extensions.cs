@@ -19,8 +19,8 @@ namespace DataAccess
                 options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
 
             // Регистрация репозиториев
-            services.AddScoped<IValueRecordRepository, ValueRecordRepository>();
-            services.AddScoped<IResultRepository, ResultRepository>();
+            services.AddScoped<IValuesRepository, ValuesRepository>();
+            services.AddScoped<IResultsRepository, ResultsRepository>();
 
             return services;
         }

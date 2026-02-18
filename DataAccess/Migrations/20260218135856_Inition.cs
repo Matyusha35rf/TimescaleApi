@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace DataAccess.Migrations
 {
     /// <inheritdoc />
-    public partial class init : Migration
+    public partial class Inition : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -31,18 +31,18 @@ namespace DataAccess.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "ValueRecords",
+                name: "Values",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     FileName = table.Column<string>(type: "text", nullable: false),
                     Date = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    ExcitionTime = table.Column<int>(type: "integer", nullable: false),
+                    ExecutionTime = table.Column<double>(type: "double precision", nullable: false),
                     Value = table.Column<double>(type: "double precision", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ValueRecords", x => x.Id);
+                    table.PrimaryKey("PK_Values", x => x.Id);
                 });
         }
 
@@ -53,7 +53,7 @@ namespace DataAccess.Migrations
                 name: "Results");
 
             migrationBuilder.DropTable(
-                name: "ValueRecords");
+                name: "Values");
         }
     }
 }
