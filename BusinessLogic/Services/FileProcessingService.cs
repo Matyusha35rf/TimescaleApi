@@ -170,13 +170,15 @@ namespace BusinessLogic.Services
             var values = records.Select(r => r.Value);
             var executionTimes = records.Select(r => r.ExecutionTime);
 
+            var timeDelta = dates.Max() - dates.Min();
+
             return new Result
             {
                 Id = Guid.NewGuid(),
                 FileName = fileName,
 
                 // Дельта времени (max Date - min Date)
-                TimeDelta = dates.Max() - dates.Min(),
+                TimeDeltaSeconds = timeDelta.TotalSeconds,
 
                 // Минимальная дата (первая операция)
                 FirstOperationDate = dates.Min(),

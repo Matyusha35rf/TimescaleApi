@@ -9,6 +9,8 @@ namespace DataAccess.Repositories
         // Добавление
         public async Task AddAsync(Result result, CancellationToken cancellationToken = default)
         {
+            result.CreatedAt = DateTime.UtcNow;
+
             await context.Results.AddAsync(result, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
         }

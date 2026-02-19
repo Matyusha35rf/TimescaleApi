@@ -13,6 +13,12 @@ namespace DataAccess.Repositories
         // Массовое добавление
         public async Task AddRangeAsync(IEnumerable<ValueRecord> records, CancellationToken cancellationToken = default)
         {
+            var now = DateTime.UtcNow;
+            foreach (var record in records)
+            {
+                record.CreatedAt = now;
+            }
+
             await context.Values.AddRangeAsync(records, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
         }
