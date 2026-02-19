@@ -9,5 +9,6 @@ namespace DataAccess.Models
         public DateTime Date { get; set; }
         public int ExcitionTime { get; set; }
         public double Value { get; set; }
+        public DateTime CreatedAt { get; set; }
     }
 }

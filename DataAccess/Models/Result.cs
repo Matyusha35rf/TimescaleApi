@@ -8,12 +8,13 @@ namespace DataAccess.Models
     {
         public Guid Id { get; set; }
         public string FileName { get; set; }
-        public TimeSpan TimeDelta { get; set; }        // max Date - min Date
+        public double TimeDeltaSeconds { get; set; }
         public DateTime FirstOperationDate { get; set; }
         public double AverageExecutionTime { get; set; }
         public double AverageValue { get; set; }
         public double MedianValue { get; set; }
         public double MaxValue { get; set; }
         public double MinValue { get; set; }
+        public DateTime CreatedAt { get; set; }
     }
 }

@@ -34,6 +34,9 @@ namespace DataAccess.Migrations
                     b.Property<double>("AverageValue")
                         .HasColumnType("double precision");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("FileName")
                         .IsRequired()
                         .HasColumnType("text");
@@ -50,8 +53,8 @@ namespace DataAccess.Migrations
                     b.Property<double>("MinValue")
                         .HasColumnType("double precision");
 
-                    b.Property<TimeSpan>("TimeDelta")
-                        .HasColumnType("interval");
+                    b.Property<double>("TimeDeltaSeconds")
+                        .HasColumnType("double precision");
 
                     b.HasKey("Id");
 
@@ -63,6 +66,9 @@ namespace DataAccess.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("Date")
                         .HasColumnType("timestamp with time zone");
