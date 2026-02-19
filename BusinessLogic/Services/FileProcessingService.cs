@@ -1,4 +1,5 @@
 ﻿using BusinessLogic.Models;
+using BusinessLogic.Services.Interfaces;
 using DataAccess.Interfaces;
 using DataAccess.Models;
 using Microsoft.AspNetCore.Http;
@@ -12,143 +13,179 @@ namespace BusinessLogic.Services
     {
         public async Task<UploadCsvResponse> ProcessCsvFileAsync(IFormFile file, CancellationToken cancellationToken = default)
         {
-            //Ответ в случае, если файл не пройдёт валидацию
-            var response = new UploadCsvResponse
-            {
-                FileName = file.FileName,
-                Success = false,
-                Message = "Файл не прошёл валидацию. ",
-            };
-
             try
             {
-                var lines = new List<string>();
-                using var reader = new StreamReader(file.OpenReadStream());
+                // 1. Чтение строк из файла
+                var lines = await ReadLinesFromFileAsync(file, cancellationToken);
 
-                // Пропускаем строку с заголовками
-                await reader.ReadLineAsync();
+                // 2. Базовая валидация количества строк
+                ValidateLineCount(lines);
 
-                string? line;
-                while ((line = await reader.ReadLineAsync()) != null)
-                {
-                    if (!string.IsNullOrWhiteSpace(line))
-                        lines.Add(line);
-                }
+                // 3. Парсинг и валидация каждой строки
+                var validRecords = await ParseAndValidateRecordsAsync(lines, file.FileName);
 
-                // Проверка количества строк
-                if (lines.Count < 1 || lines.Count > 10000)
-                {
-                    response.Success = false;
-                    response.Message += $"Количество строк ({lines.Count}) должно быть от 1 до 10000";
-                    return response;
-                }
+                // 4. Сохранение в БД
+                await valuesRepository.ReplaceByFileNameAsync(validRecords, file.FileName, cancellationToken);
 
-                var validRecords = new List<ValueRecord>();
-
-                for (var i = 0; i < lines.Count; i++)
-                {
-                    var lineNumber = i + 1; // +1 потому что, i начинается с 0
-
-                    var parts = lines[i].Split(';');
-
-                    // Проверка количества частей
-                    if (parts.Length != 3)
-                    {
-                        response.Success = false;
-                        response.Message = $"Строка {lineNumber}: неверный формат. Ожидается 3 поля, получено {parts.Length}";
-                        return response;
-                    }
-
-                    var strDate = parts[0];
-                    var strExecutionTime = parts[1];
-                    var strValue = parts[2];
-
-                    // Проверка поля даты
-                    var format = "yyyy-MM-ddTHH-mm-ss.ffffZ";
-
-                    if (!DateTime.TryParseExact(
-                        strDate,
-                        format,
-                        CultureInfo.InvariantCulture,
-                        DateTimeStyles.AdjustToUniversal,
-                        out var date))
-                    {
-                        response.Message = $"Строка {lineNumber}: неверный формат даты '{strDate}'";
-                        return response;
-                    }
-
-                    // Проверка: дата не позже текущей
-                    if (date > DateTime.UtcNow)
-                    {
-                        response.Message = $"Строка {lineNumber}: дата '{date:yyyy-MM-dd}' не может быть позже текущей";
-                        return response;
-                    }
-
-                    // Проверка: дата не раньше 01.01.2000
-                    if (date < new DateTime(2000, 1, 1))
-                    {
-                        response.Message = $"Строка {lineNumber}: дата '{date:yyyy-MM-dd}' не может быть раньше 01.01.2000";
-                        return response;
-                    }
-
-                    // Проверка времени выполнения
-                    if (!double.TryParse(parts[1], CultureInfo.InvariantCulture, out var executionTime))
-                    {
-                        response.Message = $"Строка {lineNumber}: неверный формат времени выполнения '{parts[1]}'";
-                        return response;
-                    }
-
-                    // Проверка: время выполнения не может быть меньше 0
-                    if (executionTime < 0)
-                    {
-                        response.Message = $"Строка {lineNumber}: время выполнения ({strExecutionTime}) не может быть меньше 0";
-                        return response;
-                    }
-
-                    // Проверка значения показателя
-                    if (!double.TryParse(parts[2], CultureInfo.InvariantCulture, out var value))
-                    {
-                        response.Message = $"Строка {lineNumber}: неверный формат значения '{parts[2]}'";
-                        return response;
-                    }
-
-                    // Проверка: значение не может быть меньше 0
-                    if (value < 0)
-                    {
-                        response.Message = $"Строка {lineNumber}: значение ({strValue}) не может быть меньше 0";
-                        return response;
-                    }
-
-                    // Если все проверки пройдены - добавляем запись
-                    validRecords.Add(new ValueRecord
-                    {
-                        FileName = file.FileName,
-                        Date = DateTime.SpecifyKind(date, DateTimeKind.Utc),
-                        ExecutionTime = executionTime,
-                        Value = value
-                    });
-                }
-
-                // Если все записи прошли тест на валидность, то сохраняем их в базу
-                await valuesRepository.ReplaceByFileNameAsync(validRecords, validRecords[0].FileName, cancellationToken);
-
-                // Расчёт интегральных результатов
+                // 5. Расчет и сохранение результатов
                 var result = CalculateResults(validRecords, file.FileName);
-
-                // Сохранение результатов в бд
                 await resultsRepository.ReplaceByFileNameAsync(result, file.FileName, cancellationToken);
 
-                // Изменяем и отправляем ответ после успешной обработки файла
-                response.Success = true;
-                response.Message = "Файл успешно обработан";
-                return response;
+                // 6. Успешный ответ
+                return CreateSuccessResponse(file.FileName, validRecords.Count);
+            }
+            catch (ValidationException ex)
+            {
+                return CreateErrorResponse(file.FileName, ex.Message);
             }
             catch (Exception ex)
             {
-                response.Success = false;
-                response.Message = $"Ошибка обработки файла: {ex.Message}";
-                return response;
+                return CreateErrorResponse(file.FileName, $"Ошибка обработки файла: {ex.Message}");
             }
+        }
+
+        private async Task<List<string>> ReadLinesFromFileAsync(IFormFile file, CancellationToken cancellationToken)
+        {
+            var lines = new List<string>();
+            using var reader = new StreamReader(file.OpenReadStream());
+
+            // Пропускаем заголовок
+            await reader.ReadLineAsync();
+
+            string? line;
+            while ((line = await reader.ReadLineAsync()) != null)
+            {
+                if (!string.IsNullOrWhiteSpace(line))
+                    lines.Add(line);
+            }
+
+            return lines;
+        }
+
+        private void ValidateLineCount(List<string> lines)
+        {
+            if (lines.Count < 1 || lines.Count > 10000)
+            {
+                throw new ValidationException($"Количество строк ({lines.Count}) должно быть от 1 до 10000");
+            }
+        }
+
+        private async Task<List<ValueRecord>> ParseAndValidateRecordsAsync(List<string> lines, string fileName)
+        {
+            var validRecords = new List<ValueRecord>();
+
+            for (var i = 0; i < lines.Count; i++)
+            {
+                var lineNumber = i + 1;
+                var record = await ParseAndValidateLineAsync(lines[i], lineNumber, fileName);
+                validRecords.Add(record);
+            }
+
+            return validRecords;
+        }
+
+        private async Task<ValueRecord> ParseAndValidateLineAsync(string line, int lineNumber, string fileName)
+        {
+            var parts = line.Split(';');
+
+            ValidateColumnCount(parts, lineNumber);
+
+            var date = ValidateAndParseDate(parts[0], lineNumber);
+            var executionTime = ValidateAndParseExecutionTime(parts[1], lineNumber);
+            var value = ValidateAndParseValue(parts[2], lineNumber);
+
+            return new ValueRecord
+            {
+                FileName = fileName,
+                Date = DateTime.SpecifyKind(date, DateTimeKind.Utc),
+                ExecutionTime = executionTime,
+                Value = value
+            };
+        }
+
+        private void ValidateColumnCount(string[] parts, int lineNumber)
+        {
+            if (parts.Length != 3)
+            {
+                throw new ValidationException($"Строка {lineNumber}: неверный формат. Ожидается 3 поля, получено {parts.Length}");
+            }
+        }
+
+        private DateTime ValidateAndParseDate(string dateStr, int lineNumber)
+        {
+            var format = "yyyy-MM-ddTHH-mm-ss.ffffZ";
+
+            if (!DateTime.TryParseExact(
+                dateStr,
+                format,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AdjustToUniversal,
+                out var date))
+            {
+                throw new ValidationException($"Строка {lineNumber}: неверный формат даты '{dateStr}'");
+            }
+
+            if (date > DateTime.UtcNow)
+            {
+                throw new ValidationException($"Строка {lineNumber}: дата '{date:yyyy-MM-dd}' не может быть позже текущей");
+            }
+
+            if (date < new DateTime(2000, 1, 1))
+            {
+                throw new ValidationException($"Строка {lineNumber}: дата '{date:yyyy-MM-dd}' не может быть раньше 01.01.2000");
+            }
+
+            return date;
+        }
+
+        private double ValidateAndParseExecutionTime(string timeStr, int lineNumber)
+        {
+            if (!double.TryParse(timeStr, CultureInfo.InvariantCulture, out var executionTime))
+            {
+                throw new ValidationException($"Строка {lineNumber}: неверный формат времени выполнения '{timeStr}'");
+            }
+
+            if (executionTime < 0)
+            {
+                throw new ValidationException($"Строка {lineNumber}: время выполнения ({timeStr}) не может быть меньше 0");
+            }
+
+            return executionTime;
+        }
+
+        private double ValidateAndParseValue(string valueStr, int lineNumber)
+        {
+            if (!double.TryParse(valueStr, CultureInfo.InvariantCulture, out var value))
+            {
+                throw new ValidationException($"Строка {lineNumber}: неверный формат значения '{valueStr}'");
+            }
+
+            if (value < 0)
+            {
+                throw new ValidationException($"Строка {lineNumber}: значение ({valueStr}) не может быть меньше 0");
+            }
+
+            return value;
+        }
+
+        private UploadCsvResponse CreateSuccessResponse(string fileName, int rowsSaved)
+        {
+            return new UploadCsvResponse
+            {
+                FileName = fileName,
+                Success = true,
+                Message = "Файл успешно обработан"
+            };
+        }
+
+        private UploadCsvResponse CreateErrorResponse(string fileName, string errorMessage)
+        {
+            return new UploadCsvResponse
+            {
+                FileName = fileName,
+                Success = false,
+                Message = errorMessage
+            };
         }
 
         private double CalculateMedian(IEnumerable<double> values)
@@ -158,9 +195,9 @@ namespace BusinessLogic.Services
 
             if (count == 0) return 0;
 
-            if (count % 2 == 1) // нечетное количество
+            if (count % 2 == 1)
                 return sorted[count / 2];
-            else // четное количество
+            else
                 return (sorted[count / 2 - 1] + sorted[count / 2]) / 2.0;
         }
 
@@ -176,28 +213,20 @@ namespace BusinessLogic.Services
             {
                 Id = Guid.NewGuid(),
                 FileName = fileName,
-
-                // Дельта времени (max Date - min Date)
                 TimeDeltaSeconds = timeDelta.TotalSeconds,
-
-                // Минимальная дата (первая операция)
                 FirstOperationDate = dates.Min(),
-
-                // Среднее время выполнения
                 AverageExecutionTime = executionTimes.Average(),
-
-                // Среднее значение
                 AverageValue = values.Average(),
-
-                // Медиана
                 MedianValue = CalculateMedian(values),
-
-                // Максимальное значение
                 MaxValue = values.Max(),
-
-                // Минимальное значение
                 MinValue = values.Min()
             };
         }
+    }
+
+    // Кастомное исключение для валидации
+    public class ValidationException : Exception
+    {
+        public ValidationException(string message) : base(message) { }
     }
 }

@@ -12,7 +12,9 @@ namespace DataAccess.Interfaces
         
         // Получение по имени файла
         Task<Result?> GetByFileNameAsync(string fileName, CancellationToken cancellationToken = default);
-        
+
+        Task<List<Result>> GetFilteredAsync(ResultFilter filter, CancellationToken cancellationToken = default);
+
         // Замена (перезапись)
         Task ReplaceByFileNameAsync(Result result, string fileName, CancellationToken cancellationToken = default);
     }

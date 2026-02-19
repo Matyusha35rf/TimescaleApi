@@ -43,5 +43,15 @@ namespace DataAccess.Repositories
             await DeleteByFileNameAsync(fileName, cancellationToken);
             await AddRangeAsync(records, cancellationToken);
         }
+
+        // Получения списка последних 10 значений, отсортированных по начальному времени запуска Date по имени заданного файла.
+        public async Task<List<ValueRecord>> GetLastTenByFileNameAsync(string fileName, CancellationToken cancellationToken = default)
+        {
+            return await context.Values
+                .Where(x => x.FileName == fileName)
+                .OrderByDescending(x => x.Date)  // сортируем от новых к старым
+                .Take(10)                         // берем только 10
+                .ToListAsync(cancellationToken);
+        }
     }
 }
