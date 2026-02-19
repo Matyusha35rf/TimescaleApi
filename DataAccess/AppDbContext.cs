@@ -8,7 +8,7 @@ namespace DataAccess
 {
     public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
     {
-        public DbSet<ValueRecord> ValueRecords { get; set; }
+        public DbSet<ValueRecord> Values { get; set; }
         public DbSet<Result> Results { get; set; }
     }
 }

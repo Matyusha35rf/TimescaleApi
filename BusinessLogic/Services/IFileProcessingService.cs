@@ -5,6 +5,6 @@ namespace BusinessLogic.Services
 {
     public interface IFileProcessingService
     {
-        Task<UploadCsvResponse> ProcessCsvFileAsync(IFormFile file);
+        Task<UploadCsvResponse> ProcessCsvFileAsync(IFormFile file, CancellationToken cancellationToken = default);
     }
 }

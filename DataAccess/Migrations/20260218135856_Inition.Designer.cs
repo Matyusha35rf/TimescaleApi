@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DataAccess.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260216143258_init")]
-    partial class init
+    [Migration("20260218135856_Inition")]
+    partial class Inition
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -25,7 +25,7 @@ namespace DataAccess.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("DataAccess.Result", b =>
+            modelBuilder.Entity("DataAccess.Models.Result", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -61,7 +61,7 @@ namespace DataAccess.Migrations
                     b.ToTable("Results");
                 });
 
-            modelBuilder.Entity("DataAccess.ValueRecord", b =>
+            modelBuilder.Entity("DataAccess.Models.ValueRecord", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -70,8 +70,8 @@ namespace DataAccess.Migrations
                     b.Property<DateTime>("Date")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("ExcitionTime")
-                        .HasColumnType("integer");
+                    b.Property<double>("ExecutionTime")
+                        .HasColumnType("double precision");
 
                     b.Property<string>("FileName")
                         .IsRequired()
@@ -82,7 +82,7 @@ namespace DataAccess.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ValueRecords");
+                    b.ToTable("Values");
                 });
 #pragma warning restore 612, 618
         }
