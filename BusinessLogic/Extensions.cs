@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using BusinessLogic.Services;
+using BusinessLogic.Services.Interfaces;
 
 namespace BusinessLogic
 {
@@ -9,6 +10,8 @@ namespace BusinessLogic
         {
             // Регистрация сервисов бизнес-логики
             services.AddScoped<IFileProcessingService, FileProcessingService>();
+            services.AddScoped<IResultQueryService, ResultQueryService>();
+            services.AddScoped<IValueQueryService, ValueQueryService>();
             return services;
         }
     }

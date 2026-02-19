@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using BusinessLogic.Services;
+using BusinessLogic.Services.Interfaces;
 namespace WebApi.Controllers
 {
     [ApiController]
-    [Route("CsvFile")]
+    [Route("api/[controller]")]
     public class CsvFileController(IFileProcessingService fileProcessingService) : ControllerBase
     {
         [HttpPost]

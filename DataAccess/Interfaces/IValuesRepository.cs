@@ -15,5 +15,8 @@ namespace DataAccess.Interfaces
 
         // Замена (перезапись) - комбинация удаления и добавления
         Task ReplaceByFileNameAsync(IEnumerable<ValueRecord> records, string fileName, CancellationToken cancellationToken = default);
+        
+        // Получения списка последних 10 значений, отсортированных по начальному времени запуска Date по имени заданного файла..
+        Task<List<ValueRecord>> GetLastTenByFileNameAsync(string fileName, CancellationToken cancellationToken = default);
     }
 }
