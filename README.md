@@ -74,7 +74,7 @@ Date;ExecutionTime;Value
 
 ### 1. Клонирование
 ```bash
-git clone https://github.com/ваш-username/TimescaleApi.git
+git clone https://github.com/Matyusha35rf/TimescaleApi.git
 cd TimescaleApi
 ```
 
