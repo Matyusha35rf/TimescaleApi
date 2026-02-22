@@ -9,7 +9,7 @@ namespace WebApi.Controllers
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
-    public class CsvFileController(IFileProcessingService fileProcessingService) : ControllerBase
+    public class CsvFileUploadController(IFileProcessingService fileProcessingService) : ControllerBase
     {
         /// <summary>
         /// Загрузка и обработка CSV файла
