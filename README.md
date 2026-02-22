@@ -105,7 +105,7 @@ dotnet ef database update --project DataAccess --startup-project WebApi
 dotnet run --project WebApi
 ```
 
-Swagger UI: `https://localhost:5001/swagger`
+Swagger UI: `https://localhost:7031/swagger`
 
 ## <a name="testing"></a>🧪 Тестирование
 ```bash
