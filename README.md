@@ -37,7 +37,7 @@ TimescaleApi/
 
 ### 1. Загрузка CSV файла
 ```http
-POST /api/files/upload
+POST /api/CsvFileUpload
 ```
 Загружает CSV файл, валидирует данные и сохраняет в БД.
 
