@@ -16,7 +16,5 @@ namespace DataAccess.Models
         public double MaxValue { get; set; }
         public double MinValue { get; set; }
         public DateTime CreatedAt { get; set; }
-
-
     }
 }

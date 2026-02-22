@@ -1,18 +1,22 @@
 ﻿using DataAccess.Interfaces;
 using DataAccess.Models;
-using System;
-using System.Collections.Generic;
-using System.Text;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 
 namespace DataAccess.Repositories
 {
+    /// <summary>
+    /// Репозиторий для работы с таблицей ValueRecords
+    /// </summary>
     internal class ValuesRepository(AppDbContext context) : IValuesRepository
     {
-        // Массовое добавление
+        /// <summary>
+        /// Массовое добавление записей в БД
+        /// </summary>
+        /// <param name="records">Коллекция записей для добавления</param>
+        /// <param name="cancellationToken">Токен отмены</param>
         public async Task AddRangeAsync(IEnumerable<ValueRecord> records, CancellationToken cancellationToken = default)
         {
+            // Устанавливаем техническое поле CreatedAt для всех записей
             var now = DateTime.UtcNow;
             foreach (var record in records)
             {
@@ -23,7 +27,28 @@ namespace DataAccess.Repositories
             await context.SaveChangesAsync(cancellationToken);
         }
 
-        // Массовое удаление по имени файла
+        /// <summary>
+        /// Получение последних 10 записей для указанного файла (МЕТОД 3 ИЗ ТЗ)
+        /// Сортировка от новых к старым по дате операции
+        /// </summary>
+        /// <param name="fileName">Имя файла</param>
+        /// <param name="cancellationToken">Токен отмены</param>
+        /// <returns>Список из 10 последних записей</returns>
+        public async Task<List<ValueRecord>> GetLastTenByFileNameAsync(string fileName, CancellationToken cancellationToken = default)
+        {
+            return await context.Values
+                .Where(x => x.FileName == fileName)
+                .OrderByDescending(x => x.Date)  // новые сверху
+                .Take(10)                         // только 10
+                .ToListAsync(cancellationToken);
+        }
+
+        /// <summary>
+        /// Удаление всех записей для указанного файла
+        /// Используется при перезаписи файла
+        /// </summary>
+        /// <param name="fileName">Имя файла</param>
+        /// <param name="cancellationToken">Токен отмены</param>
         public async Task DeleteByFileNameAsync(string fileName, CancellationToken cancellationToken = default)
         {
             var recordsToDelete = await context.Values
@@ -37,21 +62,20 @@ namespace DataAccess.Repositories
             }
         }
 
-        // Замена (перезапись)
+        /// <summary>
+        /// Сохраняет записи для файла.
+        /// Если записи уже существуют - перезаписывает.
+        /// </summary>
+        /// <param name="records">Коллекция записей для сохранения</param>
+        /// <param name="fileName">Имя файла</param>
+        /// <param name="cancellationToken">Токен отмены</param>
         public async Task ReplaceByFileNameAsync(IEnumerable<ValueRecord> records, string fileName, CancellationToken cancellationToken = default)
         {
+            // Удаляем старые записи для этого файла (если есть)
             await DeleteByFileNameAsync(fileName, cancellationToken);
-            await AddRangeAsync(records, cancellationToken);
-        }
 
-        // Получения списка последних 10 значений, отсортированных по начальному времени запуска Date по имени заданного файла.
-        public async Task<List<ValueRecord>> GetLastTenByFileNameAsync(string fileName, CancellationToken cancellationToken = default)
-        {
-            return await context.Values
-                .Where(x => x.FileName == fileName)
-                .OrderByDescending(x => x.Date)  // сортируем от новых к старым
-                .Take(10)                         // берем только 10
-                .ToListAsync(cancellationToken);
+            // Добавляем новые записи
+            await AddRangeAsync(records, cancellationToken);
         }
     }
 }
