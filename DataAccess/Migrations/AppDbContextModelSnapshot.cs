@@ -58,6 +58,19 @@ namespace DataAccess.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AverageExecutionTime")
+                        .HasDatabaseName("IX_Results_AverageExecutionTime");
+
+                    b.HasIndex("AverageValue")
+                        .HasDatabaseName("IX_Results_AverageValue");
+
+                    b.HasIndex("FileName")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Results_FileName");
+
+                    b.HasIndex("FirstOperationDate")
+                        .HasDatabaseName("IX_Results_FirstOperationDate");
+
                     b.ToTable("Results");
                 });
 
@@ -85,7 +98,30 @@ namespace DataAccess.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("FileName")
+                        .HasDatabaseName("IX_Values_FileName");
+
+                    b.HasIndex("FileName", "Date")
+                        .HasDatabaseName("IX_Values_FileName_Date");
+
                     b.ToTable("Values");
+                });
+
+            modelBuilder.Entity("DataAccess.Models.ValueRecord", b =>
+                {
+                    b.HasOne("DataAccess.Models.Result", "Result")
+                        .WithMany("ValueRecords")
+                        .HasForeignKey("FileName")
+                        .HasPrincipalKey("FileName")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Result");
+                });
+
+            modelBuilder.Entity("DataAccess.Models.Result", b =>
+                {
+                    b.Navigation("ValueRecords");
                 });
 #pragma warning restore 612, 618
         }

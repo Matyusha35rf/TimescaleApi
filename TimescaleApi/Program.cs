@@ -5,37 +5,28 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Добавляем слой доступа к данным (DataAccess)
 // - Регистрирует DbContext для работы с PostgreSQL
-// - Регистрирует репозитории (ValueRecordRepository, ResultRepository)
+// - Регистрирует репозитории (ValuesRepository, ResultsRepository)
 // - Строка подключения берется из appsettings.json
 builder.Services.AddData(builder.Configuration);
 
 // Добавляем слой бизнес-логики (BusinessLogic)
-// - Регистрирует сервис для обработки CSV файлов (IFileProcessingService)
-// - Содержит логику валидации, парсинга и расчета метрик
-// - Использует репозитории из DataAccess
+// - Регистрирует сервисы: IFileProcessingService, IResultQueryService, IValueQueryService
+// - Содержит логику валидации, парсинга, расчета метрик и формирования DTO
 builder.Services.AddBusinessLogic();
 
-// Add services to the container.
+// Регистрация контроллеров API
 builder.Services.AddControllers();
 
+// Регистрация Swagger для документации и тестирования API
 builder.Services.AddSwaggerGen();
-
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-//builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-/*// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
-
-app.UseHttpsRedirection();
-
-app.UseAuthorization();*/
-
+// Подключаем маршрутизацию контроллеров
 app.MapControllers();
+
+// Включаем Swagger UI (доступен по /swagger)
 app.UseSwagger();
 app.UseSwaggerUI();
+
 app.Run();

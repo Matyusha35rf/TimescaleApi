@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DataAccess.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260218135856_Inition")]
-    partial class Inition
+    [Migration("20260222134852_Initian")]
+    partial class Initian
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -37,6 +37,9 @@ namespace DataAccess.Migrations
                     b.Property<double>("AverageValue")
                         .HasColumnType("double precision");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("FileName")
                         .IsRequired()
                         .HasColumnType("text");
@@ -53,10 +56,23 @@ namespace DataAccess.Migrations
                     b.Property<double>("MinValue")
                         .HasColumnType("double precision");
 
-                    b.Property<TimeSpan>("TimeDelta")
-                        .HasColumnType("interval");
+                    b.Property<double>("TimeDeltaSeconds")
+                        .HasColumnType("double precision");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AverageExecutionTime")
+                        .HasDatabaseName("IX_Results_AverageExecutionTime");
+
+                    b.HasIndex("AverageValue")
+                        .HasDatabaseName("IX_Results_AverageValue");
+
+                    b.HasIndex("FileName")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Results_FileName");
+
+                    b.HasIndex("FirstOperationDate")
+                        .HasDatabaseName("IX_Results_FirstOperationDate");
 
                     b.ToTable("Results");
                 });
@@ -66,6 +82,9 @@ namespace DataAccess.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("Date")
                         .HasColumnType("timestamp with time zone");
@@ -82,7 +101,30 @@ namespace DataAccess.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("FileName")
+                        .HasDatabaseName("IX_Values_FileName");
+
+                    b.HasIndex("FileName", "Date")
+                        .HasDatabaseName("IX_Values_FileName_Date");
+
                     b.ToTable("Values");
+                });
+
+            modelBuilder.Entity("DataAccess.Models.ValueRecord", b =>
+                {
+                    b.HasOne("DataAccess.Models.Result", "Result")
+                        .WithMany("ValueRecords")
+                        .HasForeignKey("FileName")
+                        .HasPrincipalKey("FileName")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Result");
+                });
+
+            modelBuilder.Entity("DataAccess.Models.Result", b =>
+                {
+                    b.Navigation("ValueRecords");
                 });
 #pragma warning restore 612, 618
         }

@@ -1,4 +1,5 @@
 ﻿using DataAccess.Models;
+using BusinessLogic.Models.DTOs;
 
 namespace BusinessLogic.Services.Interfaces
 {
@@ -15,6 +16,6 @@ namespace BusinessLogic.Services.Interfaces
         /// <param name="fileName">Имя файла (например, "data.csv")</param>
         /// <param name="cancellationToken">Токен отмены операции</param>
         /// <returns>Список из 10 последних записей файла</returns>
-        Task<List<ValueRecord>> GetLastTenValuesAsync(string fileName, CancellationToken cancellationToken);
+        Task<List<ValueRecordDto>> GetLastTenValuesAsync(string fileName, CancellationToken cancellationToken);
     }
 }

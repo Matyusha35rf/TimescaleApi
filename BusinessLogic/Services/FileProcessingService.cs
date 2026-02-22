@@ -2,7 +2,9 @@
 using BusinessLogic.Services.Interfaces;
 using DataAccess.Interfaces;
 using DataAccess.Models;
+using DataAccess;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 
 namespace BusinessLogic.Services
@@ -13,7 +15,8 @@ namespace BusinessLogic.Services
     /// </summary>
     public class FileProcessingService(
         IValuesRepository valuesRepository,
-        IResultsRepository resultsRepository) : IFileProcessingService
+        IResultsRepository resultsRepository,
+        AppDbContext context) : IFileProcessingService
     {
         /// <summary>
         /// Основной метод обработки CSV файла
@@ -23,6 +26,8 @@ namespace BusinessLogic.Services
         /// <returns>Результат обработки с деталями</returns>
         public async Task<UploadCsvResponse> ProcessCsvFileAsync(IFormFile file, CancellationToken cancellationToken = default)
         {
+            await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+
             try
             {
                 // 1. Чтение строк из файла
@@ -34,24 +39,29 @@ namespace BusinessLogic.Services
                 // 3. Парсинг и валидация каждой строки согласно ТЗ
                 var validRecords = await ParseAndValidateRecordsAsync(lines, file.FileName);
 
-                // 4. Сохранение в БД с перезаписью (ТЗ: если файл существует - перезаписать)
-                await valuesRepository.ReplaceByFileNameAsync(validRecords, file.FileName, cancellationToken);
-
-                // 5. Расчет и сохранение интегральных результатов (ТЗ: метрики в таблицу Results)
+                // 4. Расчет интегральных результатов
                 var result = CalculateResults(validRecords, file.FileName);
+
+                // 5. Сохрание в БД result
                 await resultsRepository.ReplaceByFileNameAsync(result, file.FileName, cancellationToken);
 
-                // 6. Успешный ответ
-                return CreateSuccessResponse(file.FileName, validRecords.Count);
+                // 6. Затем сохранение в БД values (обязательно после сохарения Reuslt,обеспечивает привязку по внешнему ключу)
+                await valuesRepository.ReplaceByFileNameAsync(validRecords, file.FileName, cancellationToken);
+
+                // 7. Успешный ответ
+                await transaction.CommitAsync(cancellationToken);
+                return CreateSuccessResponse(file.FileName);
             }
             catch (ValidationException ex)
             {
                 // Ошибка валидации - возвращаем детали пользователю (ТЗ: вернуть соответствующую ошибку)
+                await transaction.RollbackAsync(cancellationToken);
                 return CreateErrorResponse(file.FileName, ex.Message);
             }
             catch (Exception ex)
             {
                 // Непредвиденная ошибка
+                await transaction.RollbackAsync(cancellationToken);
                 return CreateErrorResponse(file.FileName, $"Ошибка обработки файла: {ex.Message}");
             }
         }
@@ -59,16 +69,16 @@ namespace BusinessLogic.Services
         /// <summary>
         /// Чтение всех строк из файла, пропуская заголовок
         /// </summary>
-        private async Task<List<string>> ReadLinesFromFileAsync(IFormFile file, CancellationToken cancellationToken)
+        static internal async Task<List<string>> ReadLinesFromFileAsync(IFormFile file, CancellationToken cancellationToken)
         {
             var lines = new List<string>();
             using var reader = new StreamReader(file.OpenReadStream());
 
             // Пропускаем строку с заголовками (Date;ExecutionTime;Value)
-            await reader.ReadLineAsync();
+            await reader.ReadLineAsync(cancellationToken);
 
             string? line;
-            while ((line = await reader.ReadLineAsync()) != null)
+            while ((line = await reader.ReadLineAsync(cancellationToken)) != null)
             {
                 if (!string.IsNullOrWhiteSpace(line))
                     lines.Add(line);
@@ -80,7 +90,7 @@ namespace BusinessLogic.Services
         /// <summary>
         /// Проверка количества строк согласно ТЗ (1-10000)
         /// </summary>
-        private void ValidateLineCount(List<string> lines)
+        static internal void ValidateLineCount(List<string> lines)
         {
             if (lines.Count < 1 || lines.Count > 10000)
             {
@@ -91,7 +101,7 @@ namespace BusinessLogic.Services
         /// <summary>
         /// Парсинг и валидация всех строк файла
         /// </summary>
-        private async Task<List<ValueRecord>> ParseAndValidateRecordsAsync(List<string> lines, string fileName)
+        static internal async Task<List<ValueRecord>> ParseAndValidateRecordsAsync(List<string> lines, string fileName)
         {
             var validRecords = new List<ValueRecord>();
 
@@ -109,7 +119,7 @@ namespace BusinessLogic.Services
         /// Парсинг и валидация ОДНОЙ строки CSV
         /// Проверяет все требования ТЗ к отдельной записи
         /// </summary>
-        private async Task<ValueRecord> ParseAndValidateLineAsync(string line, int lineNumber, string fileName)
+        static internal async Task<ValueRecord> ParseAndValidateLineAsync(string line, int lineNumber, string fileName)
         {
             var parts = line.Split(';');
 
@@ -134,7 +144,7 @@ namespace BusinessLogic.Services
         /// <summary>
         /// Проверка количества колонок в строке
         /// </summary>
-        private void ValidateColumnCount(string[] parts, int lineNumber)
+        static internal void ValidateColumnCount(string[] parts, int lineNumber)
         {
             if (parts.Length != 3)
             {
@@ -146,7 +156,7 @@ namespace BusinessLogic.Services
         /// Валидация и парсинг даты
         /// Проверяет: формат, диапазон (2000-текущая), соответствие UTC
         /// </summary>
-        private DateTime ValidateAndParseDate(string dateStr, int lineNumber)
+        static internal DateTime ValidateAndParseDate(string dateStr, int lineNumber)
         {
             var format = "yyyy-MM-ddTHH-mm-ss.ffffZ";
 
@@ -179,7 +189,7 @@ namespace BusinessLogic.Services
         /// Валидация и парсинг времени выполнения
         /// ТЗ: не может быть меньше 0, должно соответствовать типу double
         /// </summary>
-        private double ValidateAndParseExecutionTime(string timeStr, int lineNumber)
+        static internal double ValidateAndParseExecutionTime(string timeStr, int lineNumber)
         {
             if (!double.TryParse(timeStr, CultureInfo.InvariantCulture, out var executionTime))
             {
@@ -198,7 +208,7 @@ namespace BusinessLogic.Services
         /// Валидация и парсинг значения
         /// ТЗ: не может быть меньше 0, должно соответствовать типу double
         /// </summary>
-        private double ValidateAndParseValue(string valueStr, int lineNumber)
+        static internal double ValidateAndParseValue(string valueStr, int lineNumber)
         {
             if (!double.TryParse(valueStr, CultureInfo.InvariantCulture, out var value))
             {
@@ -216,7 +226,7 @@ namespace BusinessLogic.Services
         /// <summary>
         /// Формирование успешного ответа
         /// </summary>
-        private UploadCsvResponse CreateSuccessResponse(string fileName, int rowsSaved)
+        static internal UploadCsvResponse CreateSuccessResponse(string fileName)
         {
             return new UploadCsvResponse
             {
@@ -229,7 +239,7 @@ namespace BusinessLogic.Services
         /// <summary>
         /// Формирование ответа с ошибкой
         /// </summary>
-        private UploadCsvResponse CreateErrorResponse(string fileName, string errorMessage)
+        static internal UploadCsvResponse CreateErrorResponse(string fileName, string errorMessage)
         {
             return new UploadCsvResponse
             {
@@ -242,7 +252,7 @@ namespace BusinessLogic.Services
         /// <summary>
         /// Расчет медианы для набора значений
         /// </summary>
-        private double CalculateMedian(IEnumerable<double> values)
+        static internal double CalculateMedian(IEnumerable<double> values)
         {
             var sorted = values.OrderBy(x => x).ToList();
             int count = sorted.Count;
@@ -258,7 +268,7 @@ namespace BusinessLogic.Services
         /// <summary>
         /// Расчет интегральных результатов согласно ТЗ
         /// </summary>
-        private Result CalculateResults(List<ValueRecord> records, string fileName)
+        static internal Result CalculateResults(List<ValueRecord> records, string fileName)
         {
             var dates = records.Select(r => r.Date);
             var values = records.Select(r => r.Value);
@@ -286,8 +296,6 @@ namespace BusinessLogic.Services
     /// Кастомное исключение для ошибок валидации
     /// Позволяет отделить ошибки бизнес-логики от системных
     /// </summary>
-    public class ValidationException : Exception
-    {
-        public ValidationException(string message) : base(message) { }
-    }
+    /// <param name="message">Сообщение об ошибке</param>
+    public class ValidationException(string message) : Exception(message);
 }

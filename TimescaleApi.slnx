@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="BusinessLogic/BusinessLogic.csproj" />
   <Project Path="DataAccess/DataAccess.csproj" />
+  <Project Path="TimescaleApi.Tests/TimescaleApi.Tests.csproj" Id="de0d8396-5eab-488f-9558-7f0b8ab6888c" />
   <Project Path="TimescaleApi/WebApi.csproj" />
 </Solution>

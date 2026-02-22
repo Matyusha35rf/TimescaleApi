@@ -1,4 +1,5 @@
 ﻿using DataAccess.Models;
+using BusinessLogic.Models.DTOs;
 
 namespace BusinessLogic.Services.Interfaces
 {
@@ -19,6 +20,6 @@ namespace BusinessLogic.Services.Interfaces
         /// </param>
         /// <param name="cancellationToken">Токен отмены операции</param>
         /// <returns>Отфильтрованный список результатов</returns>
-        Task<List<Result>> GetFilteredResultsAsync(ResultFilter filter, CancellationToken cancellationToken = default);
+        Task<List<ResultDto>> GetFilteredResultsAsync(ResultFilter filter, CancellationToken cancellationToken = default);
     }
 }
